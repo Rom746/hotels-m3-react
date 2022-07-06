@@ -6,8 +6,8 @@
 
 В папках проектов находятся оригинальные main.js
 
-    products\js\src
-    github\js\src
+    products\js\src\main.js
+    github\js\src\main.js
 
 Для преобразования jsx использованы babel-cli и babel-preset-react-app;
 
