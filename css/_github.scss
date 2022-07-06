@@ -30,6 +30,10 @@
         border-bottom: 1px solid $color--border;
         color: $color--primary;
 
+        &:last-child {
+            margin-bottom: 4px;
+        }
+
         &:hover {
             color: $white;
             background-color: $color--secondary;
