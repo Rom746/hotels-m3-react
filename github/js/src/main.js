@@ -1,144 +1,236 @@
-import { getRepositories } from '../api.js';
+import { getRepositories } from './api.js';
 
-function App() {
-    this.input = document.querySelector('.input-search');
-    this.input.addEventListener('input', (event) => {
+class Search extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            value: ''
+        };
+    }
+
+    updateInputValue(event) {
+        const value = event.target.value
+        this.setState({
+            value: value,
+        });
+
+        this.props.search(value, 3);
+    }
+
+    result() {
+        const r = this.props.result;
+
+        if (!r) {
+            return '';
+        }
+
+        const res = () => {
+
+            if (r.message) {
+                return <p class="error__mesage">{r.message}</p>
+            }
+
+            if (r.total_count == 0) {
+                return <p class="error__mesage">Ничего не найдено</p>
+            }
+
+            const list = r.items.map(item => {
+                return (
+                    <li key={item.node_id}
+                        class="search__result-item"
+                        onClick={(event => {
+                            event.preventDefault();
+                            window.open(item.html_url, '_blank');
+                        })}
+                    >
+                        <a class="search__result-link" href={item.html_url}>
+                            {item.owner.login + ': ' + item.name.slice(0, 30)}
+                        </a>
+                        <p class="search__result-language">{item.language}</p>
+                    </li>
+                );
+            })
+
+            return <ul class="search__result-list list"> {list} </ul>
+        }
+
+        return <div class="search__result">{ res()}</div>
+    }
+
+    btnClick(event) {
         event.preventDefault();
-        this.debounce(this.search.bind(this, 3))()
-    });
+        this.props.search(this.state.value, 10);
+        this.setState({ value: '', });
+    }
 
-    const btn = document.querySelector('.form-search__add');
-    btn.addEventListener('click', (event) => {
-        event.preventDefault();
-        this.debounce(this.search.bind(this, 10))()
-    });
+    render() {
+        return (
+            <section class="search">
+                <form class="search__form form">
+                    <div class="search__form-row">
+                        <div class="form__item search__form-item">
+                            <input
+                                class="form__item-input input-search"
+                                placeholder="search"
+                                id="input-search"
+                                value={this.state.value}
+                                onChange={this.updateInputValue.bind(this)}
+                            />
+                            <label class="form__item-label">search</label>
+                        </div>
+                        <div class="form__buttons">
+                            <button
+                                class="form-search__add form__btn"
+                                onClick={this.btnClick.bind(this)}
+                            >Искать</button>
+                        </div>
+                    </div>
+                    {this.result()}
+                </form>
 
+            </section>
+        );
+    }
 }
 
-App.prototype.debounce = function (func) {
-    
-    let throttle = false,
-        saved,
-        _this;
-    
-    function wrapper() {
+class Result extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
 
-        if (throttle) {
-            saved = arguments;
-            _this = this;
+        };
+
+    }
+
+    result() {
+        const r = this.props.result;
+        if (!r) {
+            return 'rgreg';
+        }
+
+        if (r.message) {
+            return <p class="error__mesage">{r.message}</p>
+        }
+
+        if (r.total_count == 0) {
+            return <p class="error__mesage">Ничего не найдено</p>
+        }
+
+        const list = r.items.map(item => {
+        
+            return (
+                <li
+                    key={item.node_id}
+                    class="result__item"
+                >
+                    <a
+                        class="result__link"
+                        href={item.html_url}
+                        onClick={(event => {
+                            event.preventDefault();
+                            window.open(item.html_url, '_blank');
+                        })}
+                    >{item.full_name}
+                    </a>
+                    <p class="result__description">{item.description}</p>
+                    <p class="result__language">{item.language}</p>
+                    <p class="result__topics">{item.topics.join(`  `)}</p>
+                </li>
+            );
+        });
+        return <ul class="search__result-list list"> {list} </ul>
+    }
+
+
+
+
+    render() {
+        return (this.props.result) ? (
+            <section class="result">
+                <h1 class="result__title">
+                    Найдено {this.props.result.total_count} репозиториев
+                </h1>
+                {this.result()}
+            </section>
+        ) : '';
+    }
+}
+
+
+class App extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            data: '',
+            'result-3': false,
+            'result-10': false
+        };
+    }
+
+    search(value, amount) {
+        if (value.length == 0) {
+            this.setState({ ['result-3']: false, });
             return;
         }
-
-        func.apply(this, saved);
-
-        throttle = true;
-
-        setTimeout(function () {
-            throttle = false;
-            if (saved) {
-                wrapper.apply(_this, saved);
-                saved = _this = null;
-            }
-        }, 1000);
-    }
-    return wrapper;
-}
-
-App.prototype.search = function (amount) {
-    
-    if (this.input.value.length == 0) {
-        this.view(false, amount);
-        return;
-    }
-    
-    getRepositories(this.input.value, amount).then(response => this.view(response, amount));
-}
-
-
-App.prototype.view = function (res, amount) {
-
-    const tag = (amount < 5) ? '.search__result' : '.result'
-    const result = document.querySelector(tag);
-    const list = result.querySelector('.list');
-    
-    result.classList.remove('disable');
-    list.innerHTML = '';
-
-    if (!res) {
-        result.classList.add('disable');
-        return;
-    }
-
-    if (res.message) {
-        result.querySelector(`.error__mesage`).textContent = res.message;
-        return;
-    }
-
-    if (res.total_count == 0) {
-        result.querySelector(`.error__mesage`).textContent = 'Ничего не найдено';
-        return;
-    }
-
-    res.items.forEach(item => {
-        let li = document.createElement('li');
-        let a = document.createElement('a');
-        let language = document.createElement('p');
-        if (amount < 5) {
-            li.className = 'search__result-item';
-            a.className = 'search__result-link';
-            a.textContent = item.owner.login + ': ' + item.name.slice(0,30);
-            a.href = item.html_url;
-
-            language.className = 'search__result-language';
-            language.textContent = item.language;
-
-            li.addEventListener('click', (event) => {
-                event.preventDefault();
-                window.open(a.href, '_blank');
-            });
-
-            li.append(a);
-            li.append(language);
-            
-        } else {
-            li.className = 'result__item';
-            a.className = 'result__link';
-            a.textContent = item.full_name;
-            a.href = item.html_url;
-
-            let description = document.createElement('p');
-            description.className = 'result__description';
-            description.textContent = item.description;
-
-            let topics = document.createElement('p');
-            topics.className = 'result__topics';
-            topics.textContent = item.topics.join(`  `);
-
-            language.className = 'result__language';
-            language.textContent = item.language;
-
-            li.append(a);
-            li.append(description);
-            li.append(language);
-            li.append(topics);
-
-            a.addEventListener('click', (event) => {
-                event.preventDefault();
-                window.open(a.href, '_blank');
-            });
-
+        if (amount == 10) {
+            this.setState({ ['result-3']: false, });
         }
-
-        list.append(li);
-    });
-
-    if (amount > 5) {
-        document.querySelector('.search__result').classList.add('disable');
-        document.querySelector('.result__title').textContent = `Найдено ${res.total_count} репозиториев`;
-        this.input.value = '';
+        getRepositories(value, amount)
+            .then(response => {
+                this.setState({ [`result-${amount}`]: response });
+            });
     }
 
 
+
+    debounce = function (func) {
+
+        let throttle = false,
+            saved,
+            _this;
+
+        function wrapper() {
+
+            if (throttle) {
+                saved = arguments;
+                _this = this;
+                return;
+            }
+
+            func.apply(this, arguments);
+
+            throttle = true;
+
+            setTimeout(function () {
+                throttle = false;
+                if (saved) {
+                    wrapper.apply(_this, saved);
+                    saved = _this = null;
+                }
+            }, 1000);
+        }
+        return wrapper;
+    }
+
+    render() {
+
+        return (
+            <div class="container">
+                <Search
+                    search={this.debounce(this.search.bind(this))}
+                    result={this.state['result-3']}
+
+                />
+                <Result
+                    result={this.state['result-10']}
+                />
+
+            </div>
+        );
+    }
 }
-new App();
+
+const root = ReactDOM.createRoot(document.querySelector('.app'));
+root.render(<App />);
+
 
